@@ -55,20 +55,59 @@ export default function TestEditor() {
 
   if (loading || !test || !user) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>;
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const save = async () => {
+    if (!test) return;
     setSaving(true);
-    await updateTest(test);
-    setTimeout(() => setSaving(false), 500);
+    try {
+      await updateTest(test);
+      console.log('Test saved successfully with', test.questions.length, 'questions');
+      setHasUnsavedChanges(false);
+      setTimeout(() => setSaving(false), 1000);
+    } catch (error) {
+      console.error('Error saving test:', error);
+      alert('Failed to save test. Please try again.');
+      setSaving(false);
+    }
   };
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (!loading && test) {
+      setHasUnsavedChanges(true);
+    }
+  }, [test?.questions]);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const handlePublish = async () => {
     if (test.questions.length === 0) {
       alert('Add at least one question before publishing.');
       return;
     }
-    await updateTest(test);
-    await publishTest(test.id);
-    navigate('/dashboard');
+    setSaving(true);
+    try {
+      await updateTest(test);
+      setHasUnsavedChanges(false);
+      await publishTest(test.id);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error publishing test:', error);
+      alert('Failed to publish test. Please try again.');
+      setSaving(false);
+    }
   };
 
   const addQuestion = (type: QuestionType = 'multiple-choice-single') => {
@@ -116,10 +155,40 @@ export default function TestEditor() {
   const parseBulkText = () => {
     const lines = bulkText.trim().split('\n');
     const parsed: Partial<Question>[] = [];
-    const answerKeys: Record<number, string> = {}; // Store answers from Answer Key section
+    const answerKeys: Record<number, string> = {};
     let current: Partial<Question> | null = null;
     let options: QuestionOption[] = [];
     let inAnswerKeySection = false;
+    let questionCounter = 0;
+
+    // Helper function to mark correct answer
+    const markCorrectAnswer = (opts: QuestionOption[], answer: string) => {
+      const ans = answer.trim().toUpperCase();
+      
+      // Handle "9-C" format from Answer Key
+      const keyMatch = ans.match(/^(\d+)[\-\s]+([A-E])/);
+      if (keyMatch) {
+        const optIdx = keyMatch[2].charCodeAt(0) - 65;
+        if (optIdx >= 0 && optIdx < opts.length) {
+          opts.forEach((opt, i) => { opt.isCorrect = (i === optIdx); });
+        }
+        return;
+      }
+      
+      // Check if answer is a number
+      if (/^\d+$/.test(ans)) {
+        const optIdx = parseInt(ans) - 1;
+        if (optIdx >= 0 && optIdx < opts.length) {
+          opts.forEach((opt, i) => { opt.isCorrect = (i === optIdx); });
+        }
+      } else {
+        // Answer is a letter
+        const optIdx = ans.charCodeAt(0) - 65;
+        if (optIdx >= 0 && optIdx < opts.length) {
+          opts.forEach((opt, i) => { opt.isCorrect = (i === optIdx); });
+        }
+      }
+    };
 
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i].trim();
@@ -131,9 +200,9 @@ export default function TestEditor() {
         continue;
       }
 
-      // Parse Answer Key entries (e.g., "5. C" or "6. B")
+      // Parse Answer Key entries (e.g., "5. C" or "9-C" or "6. B")
       if (inAnswerKeySection) {
-        const keyMatch = trimmed.match(/^(\d+)[\.\)]\s*([A-Ea-e1-9])/i);
+        const keyMatch = trimmed.match(/^(\d+)[\.\)\-\s]+([A-Ea-e1-9])/i);
         if (keyMatch) {
           answerKeys[parseInt(keyMatch[1])] = keyMatch[2].toUpperCase();
         }
@@ -144,20 +213,23 @@ export default function TestEditor() {
       const qMatch = trimmed.match(/^(\d+)[\.\)]\s*(.+)/);
       if (qMatch) {
         // Save previous question if exists
-        if (current) {
-          current.options = options.length > 0 ? options : undefined;
+        if (current && options.length > 0) {
+          current.options = [...options];
           parsed.push(current);
+          questionCounter++;
+        } else if (current) {
+          parsed.push(current);
+          questionCounter++;
         }
         
         const questionText = qMatch[2];
-        const questionNum = parseInt(qMatch[1]);
         
         // Check if options are on the same line (e.g., "A) Monitor  B) Keyboard  C) Speaker  D) Printer")
-        const inlineOptions = questionText.match(/([A-Ea-e])[\.\)]\s*([^A-E]+?)(?=\s+[A-Ea-e][\.\)]|$)/g);
+        const inlineOptions = questionText.match(/([A-Ea-e1-9])[\.\)]\s*([^A-E1-9]+?)(?=\s+[A-Ea-e1-9][\.\)]|$)/g);
         
-        if (inlineOptions && inlineOptions.length > 1) {
+        if (inlineOptions && inlineOptions.length >= 2) {
           // Extract question text (before first option)
-          const firstOptionIdx = questionText.search(/[A-Ea-e][\.\)]/);
+          const firstOptionIdx = questionText.search(/[A-Ea-e1-9][\.\)]/);
           const cleanQuestionText = questionText.substring(0, firstOptionIdx).trim();
           
           current = { type: 'multiple-choice-single', text: cleanQuestionText, points: 1 };
@@ -165,7 +237,7 @@ export default function TestEditor() {
           
           // Parse inline options
           inlineOptions.forEach(opt => {
-            const optMatch = opt.match(/([A-Ea-e])[\.\)]\s*(.+)/);
+            const optMatch = opt.match(/([A-Ea-e1-9])[\.\)]\s*(.+)/);
             if (optMatch) {
               const optText = optMatch[2].trim();
               const hasCorrectMark = optText.includes('*');
@@ -184,7 +256,7 @@ export default function TestEditor() {
         continue;
       }
 
-      // Match option line (e.g., "A) RAM" or "A. RAM" or "1. Python")
+      // Match option line (e.g., "A) RAM" or "A. RAM" or "1) Python")
       const optMatch = trimmed.match(/^([A-Ea-e1-9])[\.\)]\s*(.+)/);
       if (optMatch && current) {
         const optText = optMatch[2].trim();
@@ -198,23 +270,15 @@ export default function TestEditor() {
         continue;
       }
 
-      // Match answer line (e.g., "Answer: B" or "Answer: 2")
-      const ansMatch = trimmed.match(/^(?:Answer|Correct|Ans)[\.:]\s*(.+)/i);
-      if (ansMatch && current && options.length > 0) {
+      // Match answer line (e.g., "Answer: B" or "Answer: 2" or "Correct option: A")
+      const ansMatch = trimmed.match(/^(?:Answer|Correct\s*option|Correct|Ans)[\.:]?\s*(.+)/i);
+      if (ansMatch && current) {
         const ans = ansMatch[1].trim();
         
-        // Check if answer is a number (for numbered options)
-        if (/^\d+$/.test(ans)) {
-          const optIdx = parseInt(ans) - 1;
-          if (optIdx >= 0 && optIdx < options.length) {
-            options[optIdx].isCorrect = true;
-          }
-        } else {
-          // Answer is a letter (A, B, C, D)
-          const optIdx = ans.toUpperCase().charCodeAt(0) - 65;
-          if (optIdx >= 0 && optIdx < options.length) {
-            options[optIdx].isCorrect = true;
-          }
+        if (options.length > 0) {
+          markCorrectAnswer(options, ans);
+        } else if (current.type === 'fill-blank' || current.type === 'short-answer') {
+          current.correctAnswer = ans;
         }
         continue;
       }
@@ -222,8 +286,11 @@ export default function TestEditor() {
 
     // Save last question
     if (current) {
-      current.options = options.length > 0 ? options : undefined;
+      if (options.length > 0) {
+        current.options = [...options];
+      }
       parsed.push(current);
+      questionCounter++;
     }
 
     // Apply answer keys to questions
@@ -231,25 +298,7 @@ export default function TestEditor() {
       parsed.forEach((q, idx) => {
         const questionNum = idx + 1;
         if (answerKeys[questionNum] && q.options) {
-          const ans = answerKeys[questionNum];
-          
-          // Check if answer is a number
-          if (/^\d+$/.test(ans)) {
-            const optIdx = parseInt(ans) - 1;
-            if (optIdx >= 0 && optIdx < q.options.length) {
-              q.options.forEach((opt, i) => {
-                opt.isCorrect = (i === optIdx);
-              });
-            }
-          } else {
-            // Answer is a letter
-            const optIdx = ans.toUpperCase().charCodeAt(0) - 65;
-            if (optIdx >= 0 && optIdx < q.options.length) {
-              q.options.forEach((opt, i) => {
-                opt.isCorrect = (i === optIdx);
-              });
-            }
-          }
+          markCorrectAnswer(q.options, answerKeys[questionNum]);
         }
       });
     }
@@ -296,15 +345,33 @@ export default function TestEditor() {
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {test.questions.length} q · {totalPoints} pts
           </span>
+          {hasUnsavedChanges && !saving && (
+            <span className="text-xs" style={{ color: 'var(--warning)' }}>● Unsaved</span>
+          )}
           <button
             onClick={save}
-            className="px-2.5 py-1 rounded text-xs font-medium border cursor-pointer"
-            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)', color: 'var(--text)' }}
+            disabled={saving || !hasUnsavedChanges}
+            className="px-2.5 py-1 rounded text-xs font-medium border cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ 
+              borderColor: 'var(--border)', 
+              backgroundColor: saving ? 'var(--success)' : 'var(--surface)', 
+              color: saving ? '#fff' : 'var(--text)' 
+            }}
           >
-            {saving ? 'Saved' : 'Save'}
+            {saving ? '✓ Saved' : 'Save'}
           </button>
           <Link
             to={`/test/${test.id}/settings`}
+            onClick={(e) => {
+              if (hasUnsavedChanges) {
+                e.preventDefault();
+                if (window.confirm('You have unsaved changes. Save before going to settings?')) {
+                  save().then(() => navigate(`/test/${test.id}/settings`));
+                } else {
+                  navigate(`/test/${test.id}/settings`);
+                }
+              }
+            }}
             className="px-2.5 py-1 rounded text-xs font-medium no-underline border"
             style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
           >
