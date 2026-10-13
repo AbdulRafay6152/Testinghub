@@ -31,6 +31,36 @@ export default function TestEditor() {
   const [bulkPreview, setBulkPreview] = useState<Partial<Question>[]>([]);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Auto-save questions after 2 seconds of inactivity
+  useEffect(() => {
+    if (!loading && test && hasUnsavedChanges) {
+      // Clear existing timeout
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+      
+      // Set new timeout for auto-save
+      const timeout = setTimeout(async () => {
+        try {
+          await updateTest(test);
+          console.log('Auto-saved successfully');
+          setHasUnsavedChanges(false);
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      }, 2000); // 2 seconds delay
+      
+      setAutoSaveTimeout(timeout);
+    }
+    
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+    };
+  }, [test?.questions, loading, test]);
 
   // Track unsaved changes - MUST be before conditional return
   useEffect(() => {
@@ -353,17 +383,27 @@ export default function TestEditor() {
           {hasUnsavedChanges && !saving && (
             <span className="text-xs" style={{ color: 'var(--warning)' }}>● Unsaved</span>
           )}
+          {hasUnsavedChanges && (
+            <span className="text-xs" style={{ color: 'var(--warning)' }}>
+              {saving ? 'Saving...' : 'Auto-saving...'}
+            </span>
+          )}
+          {!hasUnsavedChanges && !saving && (
+            <span className="text-xs" style={{ color: 'var(--success)' }}>
+              ✓ Saved
+            </span>
+          )}
           <button
             onClick={save}
             disabled={saving || !hasUnsavedChanges}
             className="px-2.5 py-1 rounded text-xs font-medium border cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ 
               borderColor: 'var(--border)', 
-              backgroundColor: saving ? 'var(--success)' : 'var(--surface)', 
-              color: saving ? '#fff' : 'var(--text)' 
+              backgroundColor: 'var(--surface)', 
+              color: 'var(--text)' 
             }}
           >
-            {saving ? '✓ Saved' : 'Save'}
+            Save Now
           </button>
           <Link
             to={`/test/${test.id}/settings`}

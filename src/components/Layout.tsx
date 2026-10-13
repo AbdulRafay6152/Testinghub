@@ -31,7 +31,7 @@ export default function Layout() {
                 Superior Tests
               </span>
             </Link>
-            <nav className="hidden sm:flex items-center gap-4">
+            <nav className="flex items-center gap-2 sm:gap-4">
               <Link
                 to="/dashboard"
                 className="text-xs font-medium no-underline pb-0.5"
@@ -40,7 +40,8 @@ export default function Layout() {
                   borderBottom: location.pathname === '/dashboard' ? '1.5px solid var(--primary)' : '1.5px solid transparent',
                 }}
               >
-                My Tests
+                <span className="hidden sm:inline">My Tests</span>
+                <span className="sm:hidden">Tests</span>
               </Link>
               {user?.role === 'admin' && (
                 <Link
@@ -51,7 +52,8 @@ export default function Layout() {
                     borderBottom: location.pathname === '/admin' ? '1.5px solid var(--primary)' : '1.5px solid transparent',
                   }}
                 >
-                  Admin Panel
+                  <span className="hidden sm:inline">Admin Panel</span>
+                  <span className="sm:hidden">Admin</span>
                 </Link>
               )}
             </nav>

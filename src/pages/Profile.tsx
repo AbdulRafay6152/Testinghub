@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { updateProfile, changePassword } from '../firestoreStore';
 import { Save } from 'lucide-react';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -106,21 +107,31 @@ export default function Profile() {
         <form onSubmit={handleChangePassword}>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>Current Password</label>
-            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required
-              className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-              style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+            <PasswordInput
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              required
+              style={{ backgroundColor: 'var(--bg-secondary)' }}
+            />
           </div>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>New Password</label>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8}
-              className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-              style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+            <PasswordInput
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+              style={{ backgroundColor: 'var(--bg-secondary)' }}
+            />
           </div>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>Confirm New Password</label>
-            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
-              className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-              style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+            <PasswordInput
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              required
+              style={{ backgroundColor: 'var(--bg-secondary)' }}
+            />
           </div>
           <button type="submit"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border-none cursor-pointer"

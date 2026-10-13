@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getTheme, toggleTheme, resetPassword } from '../firestoreStore';
 import { Sun, Moon, ClipboardList, ArrowLeft } from 'lucide-react';
+import PasswordInput from '../components/PasswordInput';
 
 export default function ResetPassword() {
   const theme = getTheme();
@@ -145,14 +146,11 @@ export default function ResetPassword() {
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>
                   New password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
                   placeholder="Minimum 8 characters"
                 />
               </div>
@@ -160,13 +158,10 @@ export default function ResetPassword() {
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>
                   Confirm new password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-                  style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
                   placeholder="Re-enter password"
                 />
               </div>

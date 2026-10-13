@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../firestoreStore';
 import { Sun, Moon, ClipboardList } from 'lucide-react';
 import { getTheme, toggleTheme } from '../firestoreStore';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -85,18 +86,10 @@ export default function Login() {
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text)' }}>
               Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full px-2.5 py-1.5 rounded border text-xs outline-none"
-              style={{ 
-                backgroundColor: 'var(--surface)', 
-                borderColor: 'var(--border)', 
-                color: 'var(--text)',
-              }}
-              placeholder="••••••••"
             />
           </div>
           <button

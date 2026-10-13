@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUser } from '../firestoreStore';
 import { ArrowLeft } from 'lucide-react';
+import PasswordInput from '../components/PasswordInput';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -115,18 +116,11 @@ export default function Signup() {
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text)' }}>
                   Password <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-3 py-2 rounded border text-sm outline-none"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text)',
-                  }}
                   placeholder="Minimum 6 characters"
                 />
               </div>
@@ -135,17 +129,10 @@ export default function Signup() {
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text)' }}>
                   Confirm Password <span style={{ color: 'var(--error)' }}>*</span>
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded border text-sm outline-none"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text)',
-                  }}
                   placeholder="Re-enter password"
                 />
               </div>
