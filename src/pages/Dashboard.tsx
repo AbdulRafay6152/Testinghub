@@ -28,9 +28,14 @@ export default function Dashboard() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Delete this test and all its results? This cannot be undone.')) {
-      await deleteTest(id);
-      const userTests = await getUserTests(user.uid);
-      setTests(userTests);
+      try {
+        await deleteTest(id);
+        const userTests = await getUserTests(user.uid);
+        setTests(userTests);
+      } catch (error) {
+        console.error('Error deleting test:', error);
+        alert('Failed to delete test. Please try again.');
+      }
     }
   };
 

@@ -30,6 +30,7 @@ export default function TestEditor() {
   const [bulkText, setBulkText] = useState('');
   const [bulkPreview, setBulkPreview] = useState<Partial<Question>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     async function loadTest() {
@@ -38,8 +39,14 @@ export default function TestEditor() {
         return;
       }
       if (!id) {
-        const newTest = await createTest('Untitled Test');
-        navigate(`/test/${newTest.id}/edit`, { replace: true });
+        try {
+          const newTest = await createTest('Untitled Test');
+          navigate(`/test/${newTest.id}/edit`, { replace: true });
+        } catch (error) {
+          console.error('Error creating test:', error);
+          alert('Failed to create test. Please try again.');
+          navigate('/dashboard');
+        }
       } else {
         const loadedTest = await getTest(id);
         if (loadedTest) {
@@ -54,8 +61,6 @@ export default function TestEditor() {
   }, [id, user]);
 
   if (loading || !test || !user) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>;
-
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const save = async () => {
     if (!test) return;
