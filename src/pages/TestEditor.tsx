@@ -116,40 +116,101 @@ export default function TestEditor() {
   const parseBulkText = () => {
     const lines = bulkText.trim().split('\n');
     const parsed: Partial<Question>[] = [];
+    const answerKeys: Record<number, string> = {}; // Store answers from Answer Key section
     let current: Partial<Question> | null = null;
     let options: QuestionOption[] = [];
+    let inAnswerKeySection = false;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
       if (!trimmed) continue;
 
+      // Check for Answer Key section header
+      if (trimmed.match(/^Answer\s*Key\s*:?/i)) {
+        inAnswerKeySection = true;
+        continue;
+      }
+
+      // Parse Answer Key entries (e.g., "5. C" or "6. B")
+      if (inAnswerKeySection) {
+        const keyMatch = trimmed.match(/^(\d+)[\.\)]\s*([A-Ea-e1-9])/i);
+        if (keyMatch) {
+          answerKeys[parseInt(keyMatch[1])] = keyMatch[2].toUpperCase();
+        }
+        continue;
+      }
+
+      // Match question line (e.g., "1. Which component..." or "5. Which of the following...")
       const qMatch = trimmed.match(/^(\d+)[\.\)]\s*(.+)/);
       if (qMatch) {
+        // Save previous question if exists
         if (current) {
           current.options = options.length > 0 ? options : undefined;
           parsed.push(current);
         }
-        current = { type: 'multiple-choice-single', text: qMatch[2], points: 1 };
-        options = [];
+        
+        const questionText = qMatch[2];
+        const questionNum = parseInt(qMatch[1]);
+        
+        // Check if options are on the same line (e.g., "A) Monitor  B) Keyboard  C) Speaker  D) Printer")
+        const inlineOptions = questionText.match(/([A-Ea-e])[\.\)]\s*([^A-E]+?)(?=\s+[A-Ea-e][\.\)]|$)/g);
+        
+        if (inlineOptions && inlineOptions.length > 1) {
+          // Extract question text (before first option)
+          const firstOptionIdx = questionText.search(/[A-Ea-e][\.\)]/);
+          const cleanQuestionText = questionText.substring(0, firstOptionIdx).trim();
+          
+          current = { type: 'multiple-choice-single', text: cleanQuestionText, points: 1 };
+          options = [];
+          
+          // Parse inline options
+          inlineOptions.forEach(opt => {
+            const optMatch = opt.match(/([A-Ea-e])[\.\)]\s*(.+)/);
+            if (optMatch) {
+              const optText = optMatch[2].trim();
+              const hasCorrectMark = optText.includes('*');
+              options.push({
+                id: generateId(),
+                text: optText.replace('*', '').trim(),
+                isCorrect: hasCorrectMark,
+              });
+            }
+          });
+        } else {
+          // Options are on separate lines
+          current = { type: 'multiple-choice-single', text: questionText, points: 1 };
+          options = [];
+        }
         continue;
       }
 
-      const optMatch = trimmed.match(/^([A-Ea-e])[\.\)]\s*(.+)/);
+      // Match option line (e.g., "A) RAM" or "A. RAM" or "1. Python")
+      const optMatch = trimmed.match(/^([A-Ea-e1-9])[\.\)]\s*(.+)/);
       if (optMatch && current) {
+        const optText = optMatch[2].trim();
+        const hasCorrectMark = optText.includes('*');
+        
         options.push({
           id: generateId(),
-          text: optMatch[2].trim(),
-          isCorrect: false,
+          text: optText.replace('*', '').trim(),
+          isCorrect: hasCorrectMark,
         });
         continue;
       }
 
+      // Match answer line (e.g., "Answer: B" or "Answer: 2")
       const ansMatch = trimmed.match(/^(?:Answer|Correct|Ans)[\.:]\s*(.+)/i);
-      if (ansMatch && current) {
+      if (ansMatch && current && options.length > 0) {
         const ans = ansMatch[1].trim();
-        if (current.type === 'fill-blank' || current.type === 'short-answer') {
-          current.correctAnswer = ans;
-        } else if (options.length > 0) {
+        
+        // Check if answer is a number (for numbered options)
+        if (/^\d+$/.test(ans)) {
+          const optIdx = parseInt(ans) - 1;
+          if (optIdx >= 0 && optIdx < options.length) {
+            options[optIdx].isCorrect = true;
+          }
+        } else {
+          // Answer is a letter (A, B, C, D)
           const optIdx = ans.toUpperCase().charCodeAt(0) - 65;
           if (optIdx >= 0 && optIdx < options.length) {
             options[optIdx].isCorrect = true;
@@ -159,9 +220,38 @@ export default function TestEditor() {
       }
     }
 
+    // Save last question
     if (current) {
       current.options = options.length > 0 ? options : undefined;
       parsed.push(current);
+    }
+
+    // Apply answer keys to questions
+    if (Object.keys(answerKeys).length > 0) {
+      parsed.forEach((q, idx) => {
+        const questionNum = idx + 1;
+        if (answerKeys[questionNum] && q.options) {
+          const ans = answerKeys[questionNum];
+          
+          // Check if answer is a number
+          if (/^\d+$/.test(ans)) {
+            const optIdx = parseInt(ans) - 1;
+            if (optIdx >= 0 && optIdx < q.options.length) {
+              q.options.forEach((opt, i) => {
+                opt.isCorrect = (i === optIdx);
+              });
+            }
+          } else {
+            // Answer is a letter
+            const optIdx = ans.toUpperCase().charCodeAt(0) - 65;
+            if (optIdx >= 0 && optIdx < q.options.length) {
+              q.options.forEach((opt, i) => {
+                opt.isCorrect = (i === optIdx);
+              });
+            }
+          }
+        }
+      });
     }
 
     setBulkPreview(parsed);
