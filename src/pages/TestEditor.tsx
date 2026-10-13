@@ -32,6 +32,26 @@ export default function TestEditor() {
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Track unsaved changes - MUST be before conditional return
+  useEffect(() => {
+    if (!loading && test) {
+      setHasUnsavedChanges(true);
+    }
+  }, [test?.questions, loading, test]);
+
+  // Warn user before leaving with unsaved changes - MUST be before conditional return
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   useEffect(() => {
     async function loadTest() {
       if (!user) {
@@ -58,7 +78,7 @@ export default function TestEditor() {
       setLoading(false);
     }
     loadTest();
-  }, [id, user]);
+  }, [id, user, navigate]);
 
   if (loading || !test || !user) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>;
 
@@ -76,26 +96,6 @@ export default function TestEditor() {
       setSaving(false);
     }
   };
-
-  // Track unsaved changes
-  useEffect(() => {
-    if (!loading && test) {
-      setHasUnsavedChanges(true);
-    }
-  }, [test?.questions]);
-
-  // Warn user before leaving with unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
 
   const handlePublish = async () => {
     if (test.questions.length === 0) {
