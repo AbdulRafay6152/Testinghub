@@ -472,14 +472,26 @@ export async function duplicateTest(testId: string): Promise<Test | null> {
 
 export async function deleteTest(id: string): Promise<void> {
   try {
-    // Delete all attempts for this test
-    const attemptsQuery = query(collection(db, 'attempts'), where('testId', '==', id));
-    const attemptsSnapshot = await getDocs(attemptsQuery);
+    // First, try to delete all attempts for this test
+    try {
+      const attemptsQuery = query(collection(db, 'attempts'), where('testId', '==', id));
+      const attemptsSnapshot = await getDocs(attemptsQuery);
+      
+      // Delete attempts one by one to handle permission errors gracefully
+      for (const attemptDoc of attemptsSnapshot.docs) {
+        try {
+          await deleteDoc(attemptDoc.ref);
+        } catch (attemptError) {
+          console.warn('Could not delete attempt:', attemptError);
+          // Continue even if individual attempt deletion fails
+        }
+      }
+    } catch (queryError) {
+      console.warn('Could not query attempts for deletion:', queryError);
+      // Continue even if query fails
+    }
     
-    const deletePromises = attemptsSnapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-    
-    // Delete the test
+    // Delete the test itself
     await deleteDoc(doc(db, 'tests', id));
   } catch (error) {
     console.error('Error deleting test:', error);
