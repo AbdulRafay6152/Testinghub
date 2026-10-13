@@ -13,12 +13,12 @@ import { getFirestore } from 'firebase/firestore';
 // ============================================================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCWhSGWn3ZDGDNn_I-NIzgM9f67exrC82w",
-  authDomain: "superiortests.firebaseapp.com",
-  projectId: "superiortests",
-  storageBucket: "superiortests.firebasestorage.app",
-  messagingSenderId: "54832003221",
-  appId: "1:54832003221:web:aa988c5d08cdf96be1c39c"
+  apiKey: "AIzaSyCoDTd59J7h7VnRS-WSdT1F5Qi8_XcyyPs",
+  authDomain: "testingphase12.firebaseapp.com",
+  projectId: "testingphase12",
+  storageBucket: "testingphase12.firebasestorage.app",
+  messagingSenderId: "45507270630",
+  appId: "1:45507270630:web:8f22e9e3e4847221242827"
 };
 
 // Initialize Firebase
